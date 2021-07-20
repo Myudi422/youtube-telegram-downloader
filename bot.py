@@ -195,7 +195,7 @@ def download_media(update: Update, context: CallbackContext):
     query.answer()
     query.edit_message_text(text="Uploading..")
     logger.info("Uploading the file..")
-    with open(final_media_name, encoding="utf8") as video_file:
+    with open(final_media_name, mode='rb') as video_file:
         update.effective_message.reply_document(document=video_file,
                                                 filename=final_media_name,
                                                 caption=final_media_name,
