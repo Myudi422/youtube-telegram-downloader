@@ -13,10 +13,12 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 BOT_TOKEN = os.getenv('BOT_TOKEN')
+HEROKU = os.getenv('HEROKU')
+PORT = os.getenv('PORT', 5000)
 
 # error if there is no bot token set
-if BOT_TOKEN is None:
-    logger.error("BOT_TOKEN is not set, exiting.")
+if None in (BOT_TOKEN, HEROKU):
+    logger.error("BOT_TOKEN or heroku is not set, exiting.")
     exit(1)
 # Stages
 OUTPUT, STORAGE, DOWNLOAD = range(3)
@@ -228,13 +230,8 @@ def main():
     dp.add_handler(output_handler)
     dp.add_handler(download_handler)
 
-    # Start the Bot
-    updater.start_polling()
-
-    # Run the bot until you press Ctrl-C or the process receives SIGINT,
-    # SIGTERM or SIGABRT. This should be used most of the time, since
-    # start_polling() is non-blocking and will stop the bot gracefully.
-    updater.idle()
+    updater.start_webhook(listen="0.0.0.0", port=int(PORT), url_path=BOT_TOKEN)
+    updater.bot.setWebhook(HEROKU + BOT_TOKEN)
 
 
 if __name__ == '__main__':

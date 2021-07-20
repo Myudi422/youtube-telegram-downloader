@@ -1,0 +1,41 @@
+{
+    "name": "Youtube Telegram Downloader",
+    "description": "This is a selfhosted Telegram bot which is supposed to download any Videos or Streams compatible with youtube-dl.",
+    "repository": "https://github.com/infinity-plus/youtube-telegram-downloader",
+    "keywords": [
+        "python",
+        "ptb",
+        "telegram",
+        "python-telegram-bot"
+    ],
+    "image": "heroku/python",
+    "formation": {
+        "web": {
+            "quantity": 1,
+            "size": "free"
+        }
+    },
+    "env": {
+        "BOT_TOKEN": {
+            "description": "Bot API Key from BotFather https://t.me/BotFather",
+            "default": "",
+            "required": true
+        },
+        "HEROKU": {
+            "description": "Heroku app link. Type App Name to get link.",
+            "default": "",
+            "required": true
+        },
+        "PORT": {
+            "description": "Port number",
+            "required": false
+        }
+    },
+    "buildpacks": [{
+            "url": "https://github.com/jonathanong/heroku-buildpack-ffmpeg-latest.git"
+        },
+        {
+            "url": "heroku/python"
+        }
+    ]
+}

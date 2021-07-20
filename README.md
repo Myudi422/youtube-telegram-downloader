@@ -12,6 +12,14 @@ Install the [Telegram Messenger](https://telegram.org/) on a system of your choi
 
 ## Run the Telegram bot
 
+#### Method 1
+
+Click the button below:
+
+[![Deploy](https://www.herokucdn.com/deploy/button.svg)](https://heroku.com/deploy)
+
+#### Method 2
+
 Install [ffmpeg](https://ffmpeg.org/) on your system and make sure it is available in your [system PATH](https://en.wikipedia.org/wiki/PATH_(variable)).
 
 Setup a python3 environment (e.g. with [virtualenv](https://virtualenv.pypa.io/en/stable/)) and source it.:
