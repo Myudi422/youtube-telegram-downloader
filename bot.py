@@ -1,54 +1,29 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-"""Simple inline keyboard bot with multiple CallbackQueryHandlers.
-
-This bot uses an inline keyboard to interact with the user.
-
-Press Ctrl-C on the command line to stop the bot.
-"""
-from dotenv import load_dotenv
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import CallbackQueryHandler, ConversationHandler, CommandHandler, Filters, MessageHandler, Updater
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
+from telegram.ext import CallbackQueryHandler, ConversationHandler, CommandHandler, Updater, CallbackContext
 import logging
 import os
 import youtube_dl
 from hurry.filesize import size
-from backends import google_drive
 
 # Enable logging
 logging.basicConfig(
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO
-)
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    level=logging.INFO)
 
 logger = logging.getLogger(__name__)
 
-# load env variables, passes silently if file is not existing
-load_dotenv(dotenv_path='./bot.env')
-
-BOT_TOKEN = os.getenv('BOT_TOKEN', None)
+BOT_TOKEN = os.getenv('BOT_TOKEN')
 
 # error if there is no bot token set
 if BOT_TOKEN is None:
     logger.error("BOT_TOKEN is not set, exiting.")
     exit(1)
-
-# parse trusted user ids
-TRUST_ANYBODY = 'anybody'
-_TRUSTED_USER_IDS = os.getenv('TRUSTED_USER_IDS', '')
-TRUSTED_USER_IDS = _TRUSTED_USER_IDS.split(',')
-# trust anybody if unset
-if TRUSTED_USER_IDS is [] or TRUSTED_USER_IDS == [""]:
-    TRUSTED_USER_IDS = TRUST_ANYBODY
-    logger.info("TRUSTED_USER_IDS was not set, bot will trust anybody.")
-
 # Stages
 OUTPUT, STORAGE, DOWNLOAD = range(3)
 
 # Callback data
 CALLBACK_MP4 = "mp4"
 CALLBACK_MP3 = "mp3"
-CALLBACK_OVERCAST = "overcast"
-CALLBACK_GOOGLE_DRIVE = "drive"
 CALLBACK_BEST_FORMAT = "best"
 CALLBACK_SELECT_FORMAT = "select_format"
 CALLBACK_ABORT = "abort"
@@ -66,76 +41,50 @@ def is_supported(url):
     return False
 
 
-def is_trusted(user_id):
-    # convert to string if necessary
-    if type(user_id) == int:
-        user_id = str(user_id)
-
-    if TRUSTED_USER_IDS == TRUST_ANYBODY:
-        # bot trusts anybody
-        return True
-
-    # bot trusts only defined user ids
-    return user_id in TRUSTED_USER_IDS
+def start(update: Update, context: CallbackContext):
+    update.effective_message.reply_text(
+        "Hello! Send /help if you don't know how to use me!")
 
 
-def whoami(update, context):
-    # reply user
-    user = update.message.from_user
-    if is_trusted(user.id):
-        update.message.reply_text(user.id)
+def help_text(update: Update, context: CallbackContext):
+    help_text = '''Just send me a video link like:
+    /v <videolink>
+
+    e.g:
+    /v youtube.com/watch?v=mKxu_dyzrj4'''
+    update.effective_message.reply_text(help_text)
 
 
-def start(update, context):
+def video(update: Update, context: CallbackContext):
     """
     Invoked on every user message to create an interactive inline conversation.
     """
 
-    # Get user who sent the message
-    user = update.message.from_user
-    if not is_trusted(user.id):
-        logger.info(
-            "Ignoring request of untrusted user '%s' with id '%s'", user.first_name, user.id)
-        logger.debug("I only trust these user ids: %s", str(TRUSTED_USER_IDS))
-        return None
-    # retrieve content of message
-    message_text = update.message.text
-
-    # also handle whoami command as plain string
-    if message_text == "whoami":
-        whoami(update, context)
-        return ConversationHandler.END
-
     # update global URL object
-    url = message_text
-    # save url to user context
-    context.user_data["url"] = url
-    logger.info("User %s started the conversation with '%s'.",
-                user.first_name, url)
-    # Build InlineKeyboard where each button has a displayed text
-    # and a string as callback_data
-    # The keyboard is a list of button rows, where each row is in turn
-    # a list (hence `[[...]]`).
-    if is_supported(url):
-        keyboard = [
-            [
+    try:
+        url: str = "".join(context.args)
+        if is_supported(url):
+            # save url to user context
+            context.user_data["url"] = url
+            keyboard = [[
                 InlineKeyboardButton(
-                    "Download Best Format", callback_data=CALLBACK_BEST_FORMAT),
-                InlineKeyboardButton(
-                    "Select Format", callback_data=CALLBACK_SELECT_FORMAT),
+                    "Download Best Format",
+                    callback_data=f"format_{CALLBACK_BEST_FORMAT}"),
+                InlineKeyboardButton("Select Format",
+                                     callback_data=CALLBACK_SELECT_FORMAT),
                 # TODO add abort button
                 # InlineKeyboardButton("Abort", callback_data=CALLBACK_ABORT),
-            ]
-        ]
-        reply_markup = InlineKeyboardMarkup(keyboard)
-        # Send message with text and appended InlineKeyboard
-        update.message.reply_text(
-            "Do you want me to download '%s' ?" % url, reply_markup=reply_markup)
-        return OUTPUT
-    else:
-        logger.info("Invalid url requested: '%s'", url)
-        update.message.reply_text("I can't download your request '%s' 😤" % url)
-        ConversationHandler.END
+            ]]
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            # Send message with text and appended InlineKeyboard
+            update.message.reply_text("Do you want me to download?",
+                                      reply_markup=reply_markup)
+        else:
+            update.message.reply_text("I can't download your request '%s' 😤" %
+                                      url)
+    except TypeError:
+        logger.info("Invalid url requested:")
+        update.message.reply_text("I can't download your request😤")
 
 
 def build_menu(buttons, n_cols, header_buttons=None, footer_buttons=None):
@@ -150,7 +99,7 @@ def build_menu(buttons, n_cols, header_buttons=None, footer_buttons=None):
     return menu
 
 
-def select_source_format(update, context):
+def select_source_format(update: Update, context: CallbackContext):
     """
     A stage asking the user for the source format to be downloaded.
     """
@@ -161,15 +110,15 @@ def select_source_format(update, context):
     url = context.user_data["url"]
     ydl_opts = {}
     with youtube_dl.YoutubeDL(ydl_opts) as ydl:
-        meta = ydl.extract_info(
-            url, download_media=False)
+        meta: dict = ydl.extract_info(url, download=False)
         formats = meta.get('formats', [meta])
 
     # dynamically build a format menu
-    formats = sorted(formats, key=lambda k: k['ext'])
+    formats: dict = sorted(formats, key=lambda k: k['ext'])
     button_list = []
-    button_list.append(InlineKeyboardButton(
-        "Best Quality", callback_data=CALLBACK_BEST_FORMAT))
+    button_list.append(
+        InlineKeyboardButton("Best Quality",
+                             callback_data=f"format_{CALLBACK_BEST_FORMAT}"))
     for f in formats:
         # {'format_id': '243', 'url': '...', 'player_url': '...', 'ext': 'webm', 'height': 266, 'format_note': '360p',
         # 'vcodec': 'vp9', 'asr': None, 'filesize': 2663114, 'fps': 24, 'tbr': 267.658, 'width': 640, 'acodec': 'none',
@@ -178,68 +127,39 @@ def select_source_format(update, context):
         # 'Accept-Charset': '...', 'Accept': '...',
         # 'Accept-Encoding': 'gzip, deflate', 'Accept-Language': 'en-us,en;q=0.5'}}
         format_text = f"{f['format_note']}, {f['height']}x{f['width']}, type: {f['ext']}, fps: {f['fps']}, {size(f['filesize']) if f['filesize'] else 'None'}"
-        button_list.append(InlineKeyboardButton(
-            format_text, callback_data=f['format_id']))
+        button_list.append(
+            InlineKeyboardButton(format_text,
+                                 callback_data=f"format_{f['format_id']}"))
     reply_markup = InlineKeyboardMarkup(build_menu(button_list, n_cols=1))
 
-    query.edit_message_text(
-        text="Choose Format", reply_markup=reply_markup
-    )
-    return OUTPUT
+    query.edit_message_text(text="Choose Format", reply_markup=reply_markup)
 
 
-def select_output_format(update, context):
+def select_output_format(update: Update, context: CallbackContext):
     """
     A stage asking the user for the desired output media format.
     """
     logger.info("output()")
     query = update.callback_query
-    context.user_data[CALLBACK_SELECT_FORMAT] = query.data
+    context.user_data[CALLBACK_SELECT_FORMAT] = query.data.split("format_",
+                                                                 maxsplit=1)[1]
     query.answer()
-    keyboard = [
-        [
-            InlineKeyboardButton("Audio", callback_data=CALLBACK_MP3),
-            InlineKeyboardButton("Video", callback_data=CALLBACK_MP4),
-        ]
-    ]
+    keyboard = [[
+        InlineKeyboardButton("Audio",
+                             callback_data=f"download_{CALLBACK_MP3}"),
+        InlineKeyboardButton("Video",
+                             callback_data=F"download_{CALLBACK_MP4}"),
+    ]]
     reply_markup = InlineKeyboardMarkup(keyboard)
-    query.edit_message_text(
-        text="Do you want the full video or just audio?", reply_markup=reply_markup
-    )
-    return STORAGE
+    query.edit_message_text(text="Do you want the full video or just audio?",
+                            reply_markup=reply_markup)
 
 
-def select_storage(update, context):
-    """
-    A stage asking the user for the storage backend to which the media file shall be uploaded.
-    """
-    logger.info("storage()")
-    query = update.callback_query
-    context.user_data["output"] = query.data
-    query.answer()
-    keyboard = [
-        [
-            InlineKeyboardButton(
-                "Google Drive", callback_data=CALLBACK_GOOGLE_DRIVE),
-            InlineKeyboardButton("Overcast", callback_data=CALLBACK_OVERCAST),
-        ]
-    ]
-    reply_markup = InlineKeyboardMarkup(keyboard)
-    query.edit_message_text(
-        text="Where shall I upload the file?", reply_markup=reply_markup
-    )
-    return DOWNLOAD
-
-
-def download_media(update, context):
+def download_media(update: Update, context: CallbackContext):
     """
     A stage downloading the selected media and converting it to the desired output format.
-    Afterwards the file will be uploaded to the specified storage backend.
     """
     query = update.callback_query
-    context.user_data["storage"] = query.data
-    logger.info("All settings: %s", context.user_data)
-
     query.edit_message_text(text="Downloading..")
     url = context.user_data["url"]
     logger.info("Video URL to download: '%s'", url)
@@ -248,9 +168,12 @@ def download_media(update, context):
     # some default configurations for video downloads
     MP3_EXTENSION = 'mp3'
     YOUTUBE_DL_OPTIONS = {
-        'format': selected_format,
-        'restrictfilenames': True,
-        'outtmpl': '%(title)s.%(ext)s',
+        'format':
+        selected_format,
+        'restrictfilenames':
+        True,
+        'outtmpl':
+        '%(title)s.%(ext)s',
         'postprocessors': [{
             'key': 'FFmpegExtractAudio',
             'preferredcodec': MP3_EXTENSION,
@@ -260,77 +183,50 @@ def download_media(update, context):
 
     with youtube_dl.YoutubeDL(YOUTUBE_DL_OPTIONS) as ydl:
         result = ydl.extract_info("{}".format(url))
-        original_video_name = ydl.prepare_filename(result)
+        original_video_name = str(ydl.prepare_filename(result))
 
     raw_media_name = os.path.splitext(original_video_name)[0]
     final_media_name = "%s.%s" % (raw_media_name, MP3_EXTENSION)
-
-    # upload the file
-    backend_name = context.user_data["storage"]
-    backend = None
-    if backend_name == CALLBACK_GOOGLE_DRIVE:
-        backend = google_drive.GoogleDriveStorage()
-    elif backend_name == CALLBACK_OVERCAST:
-        raise NotImplementedError
-    else:
-        logger.error("Invalid backend '%s'", backend)
 
     # upload the media file
     query = update.callback_query
     query.answer()
     query.edit_message_text(text="Uploading..")
     logger.info("Uploading the file..")
-    backend.upload(final_media_name)
+    with open(final_media_name, encoding="utf8") as video_file:
+        update.effective_message.reply_document(document=video_file,
+                                                filename=final_media_name,
+                                                caption=final_media_name,
+                                                quote=True)
     logger.info("Upload finished.")
-
-    # finish conversation
-    query = update.callback_query
-    query.answer()
-    query.edit_message_text(text="Done!")
-    logger.info("Done!")
-    return ConversationHandler.END
+    if os.path.exists(final_media_name):
+        os.remove(final_media_name)
+    update.callback_query.answer()
 
 
 def main():
     # Create the Updater and pass it your bot's token.
-    updater = Updater(token=BOT_TOKEN, use_context=True)
+    updater = Updater(token=BOT_TOKEN)
 
     # Get the dispatcher to register handlers
     dp = updater.dispatcher
 
-    # Setup conversation handler with the states FIRST and SECOND
-    # Use the pattern parameter to pass CallbackQueries with specific
-    # data pattern to the corresponding handlers.
-    # ^ means "start of line/string"
-    # $ means "end of line/string"
-    # So ^ABC$ will only allow 'ABC'
-    conv_handler = ConversationHandler(
-        entry_points=[MessageHandler(Filters.text & ~Filters.command, start)],
-        states={
+    start_handler = CommandHandler("start", start)
+    help_handler = CommandHandler("help", help_text)
+    video_handler = CommandHandler("v", video)
+    source_handler = CallbackQueryHandler(callback=select_source_format,
+                                          pattern="^select_format")
+    output_handler = CallbackQueryHandler(callback=select_output_format,
+                                          pattern="^format_")
+    download_handler = CallbackQueryHandler(callback=download_media,
+                                            pattern="^download_")
 
-            OUTPUT: [
-                CallbackQueryHandler(
-                    select_source_format, pattern="^%s$" % CALLBACK_SELECT_FORMAT),
-                CallbackQueryHandler(select_output_format),
-            ],
-            STORAGE: [
-                CallbackQueryHandler(select_storage)
-            ],
-            DOWNLOAD: [
-                CallbackQueryHandler(download_media),
-            ]
-        },
-        allow_reentry=False,
-        per_user=True,
-        fallbacks=[CommandHandler('start', start)],
-    )
-
-    # Add ConversationHandler to dispatcher that will be used for
-    # handling updates
-    dp.add_handler(conv_handler)
-
-    # handle whoami command (with leading slash)
-    dp.add_handler(CommandHandler("whoami", whoami))
+    dp.add_handler(start_handler)
+    dp.add_handler(help_handler)
+    dp.add_handler(video_handler)
+    dp.add_handler(source_handler)
+    dp.add_handler(output_handler)
+    dp.add_handler(download_handler)
 
     # Start the Bot
     updater.start_polling()
