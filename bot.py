@@ -1,9 +1,8 @@
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update, Message
 from telegram.ext import CallbackQueryHandler, ConversationHandler, CommandHandler, Updater, CallbackContext
 import logging
 import os
-import youtube_dl
-from hurry.filesize import size
+import yt_dlp
 
 # Enable logging
 logging.basicConfig(
@@ -20,23 +19,14 @@ PORT = os.getenv('PORT', 5000)
 if None in (BOT_TOKEN, HEROKU):
     logger.error("BOT_TOKEN or heroku is not set, exiting.")
     exit(1)
-# Stages
-OUTPUT, STORAGE, DOWNLOAD = range(3)
-
-# Callback data
-CALLBACK_MP4 = "mp4"
-CALLBACK_MP3 = "mp3"
-CALLBACK_BEST_FORMAT = "best"
-CALLBACK_SELECT_FORMAT = "select_format"
-CALLBACK_ABORT = "abort"
 
 
 def is_supported(url):
     """
-    Checks whether the URL type is eligible for youtube_dl.\n
+    Checks whether the URL type is eligible for yt_dlp.\n
     Returns True or False.
     """
-    extractors = youtube_dl.extractor.gen_extractors()
+    extractors = yt_dlp.extractor.gen_extractors()
     for e in extractors:
         if e.suitable(url) and e.IE_NAME != 'generic':
             return True
@@ -44,117 +34,52 @@ def is_supported(url):
 
 
 def start(update: Update, context: CallbackContext):
+    assert isinstance(update.effective_message, Message)
     update.effective_message.reply_text(
         "Hello! Send /help if you don't know how to use me!")
 
 
 def help_text(update: Update, context: CallbackContext):
     help_text = '''Just send me a video link like:
-    /v <videolink>
+/v <videolink>
 
-    e.g:
-    /v youtube.com/watch?v=mKxu_dyzrj4'''
+e.g:
+/v youtube.com/watch?v=mKxu_dyzrj4'''
+    assert isinstance(update.effective_message, Message)
     update.effective_message.reply_text(help_text)
 
 
-def video(update: Update, context: CallbackContext):
+def extractYt(yturl: str) -> tuple[str, str]:
+    ydl = yt_dlp.YoutubeDL()
+    with ydl:
+        r = ydl.extract_info(yturl, download=False)
+        assert isinstance(r, dict)
+        return r['title'], r['thumbnail']
+
+
+def catch_url(update: Update, context: CallbackContext):
     """
     Invoked on every user message to create an interactive inline conversation.
     """
 
-    # update global URL object
     try:
-        url: str = "".join(context.args)
+        assert isinstance(context.user_data, dict)
+        url: str = "".join(context.args) if context.args is not None else ""
         if is_supported(url):
             # save url to user context
             context.user_data["url"] = url
             keyboard = [[
-                InlineKeyboardButton(
-                    "Download Best Format",
-                    callback_data=f"format_{CALLBACK_BEST_FORMAT}"),
-                InlineKeyboardButton("Select Format",
-                                     callback_data=CALLBACK_SELECT_FORMAT),
-                # TODO add abort button
-                # InlineKeyboardButton("Abort", callback_data=CALLBACK_ABORT),
+                InlineKeyboardButton("Audio", callback_data=f"format_mp3"),
+                InlineKeyboardButton("Video", callback_data="format_mp4"),
             ]]
             reply_markup = InlineKeyboardMarkup(keyboard)
-            # Send message with text and appended InlineKeyboard
-            update.message.reply_text("Do you want me to download?",
+            update.message.reply_text("What do you want me to download?",
                                       reply_markup=reply_markup)
         else:
-            update.message.reply_text("I can't download your request '%s' 😤" %
-                                      url)
+            update.message.reply_text(f"I can't download your request '{url}'")
     except TypeError:
         logger.info("Invalid url requested:")
-        update.message.reply_text("I can't download your request😤")
-
-
-def build_menu(buttons, n_cols, header_buttons=None, footer_buttons=None):
-    """
-    Creates an interactive button menu for the user.
-    """
-    menu = [buttons[i:i + n_cols] for i in range(0, len(buttons), n_cols)]
-    if header_buttons:
-        menu.insert(0, header_buttons)
-    if footer_buttons:
-        menu.append(footer_buttons)
-    return menu
-
-
-def select_source_format(update: Update, context: CallbackContext):
-    """
-    A stage asking the user for the source format to be downloaded.
-    """
-    logger.info("select_format")
-    query = update.callback_query
-    query.answer()
-    # get formats
-    url = context.user_data["url"]
-    ydl_opts = {}
-    with youtube_dl.YoutubeDL(ydl_opts) as ydl:
-        meta: dict = ydl.extract_info(url, download=False)
-        formats = meta.get('formats', [meta])
-
-    # dynamically build a format menu
-    formats: dict = sorted(formats, key=lambda k: k['ext'])
-    button_list = []
-    button_list.append(
-        InlineKeyboardButton("Best Quality",
-                             callback_data=f"format_{CALLBACK_BEST_FORMAT}"))
-    for f in formats:
-        # {'format_id': '243', 'url': '...', 'player_url': '...', 'ext': 'webm', 'height': 266, 'format_note': '360p',
-        # 'vcodec': 'vp9', 'asr': None, 'filesize': 2663114, 'fps': 24, 'tbr': 267.658, 'width': 640, 'acodec': 'none',
-        # 'downloader_options': {'http_chunk_size': 10485760}, 'format': '243 - 640x266 (360p)', 'protocol': 'https',
-        # 'http_headers': {'User-Agent': '...',
-        # 'Accept-Charset': '...', 'Accept': '...',
-        # 'Accept-Encoding': 'gzip, deflate', 'Accept-Language': 'en-us,en;q=0.5'}}
-        format_text = f"{f['format_note']}, {f['height']}x{f['width']}, type: {f['ext']}, fps: {f['fps']}, {size(f['filesize']) if f['filesize'] else 'None'}"
-        button_list.append(
-            InlineKeyboardButton(format_text,
-                                 callback_data=f"format_{f['format_id']}"))
-    reply_markup = InlineKeyboardMarkup(build_menu(button_list, n_cols=1))
-
-    query.edit_message_text(text="Choose Format", reply_markup=reply_markup)
-
-
-def select_output_format(update: Update, context: CallbackContext):
-    """
-    A stage asking the user for the desired output media format.
-    """
-    logger.info("output()")
-    query = update.callback_query
-    context.user_data[CALLBACK_SELECT_FORMAT] = query.data.split("format_",
-                                                                 maxsplit=1)[1]
-    query.answer()
-    keyboard = [[
-        InlineKeyboardButton("Audio",
-                             callback_data=f"download_{CALLBACK_MP3}"),
-        InlineKeyboardButton("Video",
-                             callback_data=F"download_{CALLBACK_MP4}"),
-    ]]
-    reply_markup = InlineKeyboardMarkup(keyboard)
-    query.edit_message_text(text="Do you want the full video or just audio?",
-                            reply_markup=reply_markup)
+        update.message.reply_text("I can't download your request")
 
 
 def download_media(update: Update, context: CallbackContext):
@@ -163,47 +88,43 @@ def download_media(update: Update, context: CallbackContext):
     """
     query = update.callback_query
     query.edit_message_text(text="Downloading..")
+    assert isinstance(context.user_data, dict)
     url = context.user_data["url"]
-    logger.info("Video URL to download: '%s'", url)
-    selected_format = context.user_data[CALLBACK_SELECT_FORMAT]
-
-    # some default configurations for video downloads
-    MP3_EXTENSION = 'mp3'
-    YOUTUBE_DL_OPTIONS = {
-        'format':
-        selected_format,
-        'restrictfilenames':
-        True,
-        'outtmpl':
-        '%(title)s.%(ext)s',
-        'postprocessors': [{
+    logger.info(f"Video URL to download: '{url}'")
+    media_type = query.data.split("_")[1]
+    name, thumbnail = extractYt(url)
+    ydl_opts = {"outtmpl": f"{name}.%(ext)s", 'noplaylist': True}
+    if media_type == "mp3":
+        ydl_opts["format"] = "bestaudio/best"
+        ydl_opts["postprocessors"] = [{
             'key': 'FFmpegExtractAudio',
-            'preferredcodec': MP3_EXTENSION,
-            'preferredquality': '192',
-        }],
-    }
+            'preferedformat': 'mp3',
+            'preferredquality': '192'
+        }]
+    else:
+        ydl_opts["format"] = "bestvideo[ext=mp4]+bestaudio/best"
+        ydl_opts['postprocessors'] = [{
+            'key': 'FFmpegVideoConvertor',
+            'preferedformat': 'mp4'
+        }]
 
-    with youtube_dl.YoutubeDL(YOUTUBE_DL_OPTIONS) as ydl:
-        result = ydl.extract_info("{}".format(url))
-        original_video_name = str(ydl.prepare_filename(result))
-
-    raw_media_name = os.path.splitext(original_video_name)[0]
-    final_media_name = "%s.%s" % (raw_media_name, MP3_EXTENSION)
+    media_name = os.path.splitext(name)[0] + "." + media_type
 
     # upload the media file
     query = update.callback_query
     query.answer()
     query.edit_message_text(text="Uploading..")
+    update.callback_query.answer()
     logger.info("Uploading the file..")
-    with open(final_media_name, mode='rb') as video_file:
+    with open(media_name, mode='rb') as video_file:
+        assert isinstance(update.effective_message, Message)
         update.effective_message.reply_document(document=video_file,
-                                                filename=final_media_name,
-                                                caption=final_media_name,
+                                                filename=media_name,
+                                                caption=name,
                                                 quote=True)
     logger.info("Upload finished.")
-    if os.path.exists(final_media_name):
-        os.remove(final_media_name)
-    update.callback_query.answer()
+    if os.path.exists(media_name):
+        os.remove(media_name)
 
 
 def main():
@@ -215,23 +136,21 @@ def main():
 
     start_handler = CommandHandler("start", start)
     help_handler = CommandHandler("help", help_text)
-    video_handler = CommandHandler("v", video)
-    source_handler = CallbackQueryHandler(callback=select_source_format,
-                                          pattern="^select_format")
-    output_handler = CallbackQueryHandler(callback=select_output_format,
-                                          pattern="^format_")
+    video_handler = CommandHandler("v", catch_url)
     download_handler = CallbackQueryHandler(callback=download_media,
-                                            pattern="^download_")
+                                            pattern="^format_mp[34]$")
 
     dp.add_handler(start_handler)
     dp.add_handler(help_handler)
     dp.add_handler(video_handler)
-    dp.add_handler(source_handler)
-    dp.add_handler(output_handler)
     dp.add_handler(download_handler)
-
-    updater.start_webhook(listen="0.0.0.0", port=int(PORT), url_path=BOT_TOKEN)
-    updater.bot.setWebhook(HEROKU + BOT_TOKEN)
+    if None not in (BOT_TOKEN, HEROKU):
+        assert isinstance(BOT_TOKEN, str)
+        assert isinstance(HEROKU, str)
+        updater.start_webhook(listen="0.0.0.0",
+                              port=int(PORT),
+                              url_path=BOT_TOKEN)
+        updater.bot.setWebhook(HEROKU + BOT_TOKEN)
 
 
 if __name__ == '__main__':
