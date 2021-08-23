@@ -87,7 +87,7 @@ def download_media(update: Update, context: CallbackContext):
     A stage downloading the selected media and converting it to the desired output format.
     """
     query = update.callback_query
-    query.edit_message_text(text="Downloading..")
+    query.edit_message_text(text="Parsing...")
     assert isinstance(context.user_data, dict)
     url = context.user_data["url"]
     logger.info(f"Video URL to download: '{url}'")
@@ -107,21 +107,24 @@ def download_media(update: Update, context: CallbackContext):
             'key': 'FFmpegVideoConvertor',
             'preferedformat': 'mp4'
         }]
-
+    query.edit_message_text(text="Downloading...")
+    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+        ydl.download([url])
     media_name = os.path.splitext(name)[0] + "." + media_type
 
     # upload the media file
     query = update.callback_query
     query.answer()
-    query.edit_message_text(text="Uploading..")
+    query.edit_message_text(text="Uploading...")
     update.callback_query.answer()
     logger.info("Uploading the file..")
-    with open(media_name, mode='rb') as video_file:
-        assert isinstance(update.effective_message, Message)
-        update.effective_message.reply_document(document=video_file,
-                                                filename=media_name,
-                                                caption=name,
-                                                quote=True)
+    if os.path.exists(media_name):
+        with open(media_name, mode='rb') as video_file:
+            assert isinstance(update.effective_message, Message)
+            update.effective_message.reply_document(document=video_file,
+                                                    filename=media_name,
+                                                    caption=name,
+                                                    quote=True)
     logger.info("Upload finished.")
     if os.path.exists(media_name):
         os.remove(media_name)
