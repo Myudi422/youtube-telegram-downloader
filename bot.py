@@ -98,11 +98,11 @@ def download_media(update: Update, context: CallbackContext):
         ydl_opts["format"] = "bestaudio/best"
         ydl_opts["postprocessors"] = [{
             'key': 'FFmpegExtractAudio',
-            'preferedformat': 'mp3',
+            'preferredcodec': 'mp3',
             'preferredquality': '192'
         }]
     else:
-        ydl_opts["format"] = "bestvideo[ext=mp4]+bestaudio/best"
+        ydl_opts["format"] = "best"
         ydl_opts['postprocessors'] = [{
             'key': 'FFmpegVideoConvertor',
             'preferedformat': 'mp4'
@@ -118,14 +118,13 @@ def download_media(update: Update, context: CallbackContext):
     query.edit_message_text(text="Uploading...")
     update.callback_query.answer()
     logger.info("Uploading the file..")
-    if os.path.exists(media_name):
-        with open(media_name, mode='rb') as video_file:
-            assert isinstance(update.effective_message, Message)
-            update.effective_message.reply_document(document=video_file,
-                                                    filename=media_name,
-                                                    caption=name,
-                                                    thumb=thumbnail,
-                                                    quote=True)
+    with open(media_name, mode='rb') as video_file:
+        assert isinstance(update.effective_message, Message)
+        update.effective_message.reply_document(document=video_file,
+                                                filename=media_name,
+                                                caption=name,
+                                                thumb=thumbnail,
+                                                quote=True)
     logger.info("Upload finished.")
     if os.path.exists(media_name):
         os.remove(media_name)
