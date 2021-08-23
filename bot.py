@@ -153,8 +153,8 @@ def main():
         assert isinstance(HEROKU, str)
         updater.start_webhook(listen="0.0.0.0",
                               port=int(PORT),
-                              url_path=BOT_TOKEN)
-        updater.bot.setWebhook(HEROKU + BOT_TOKEN)
+                              url_path=BOT_TOKEN,
+                              webhook_url=HEROKU + BOT_TOKEN)
 
 
 if __name__ == '__main__':
