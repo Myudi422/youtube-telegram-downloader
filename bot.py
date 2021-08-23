@@ -124,6 +124,7 @@ def download_media(update: Update, context: CallbackContext):
             update.effective_message.reply_document(document=video_file,
                                                     filename=media_name,
                                                     caption=name,
+                                                    thumb=thumbnail,
                                                     quote=True)
     logger.info("Upload finished.")
     if os.path.exists(media_name):
