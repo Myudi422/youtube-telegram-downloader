@@ -3,6 +3,7 @@ from telegram.ext import CallbackQueryHandler, ConversationHandler, CommandHandl
 import logging
 import os
 import yt_dlp
+from uuid import uuid4
 
 # Enable logging
 logging.basicConfig(
@@ -93,7 +94,8 @@ def download_media(update: Update, context: CallbackContext):
     logger.info(f"Video URL to download: '{url}'")
     media_type = query.data.split("_")[1]
     name, thumbnail = extractYt(url)
-    ydl_opts = {"outtmpl": f"{name}.%(ext)s", 'noplaylist': True}
+    unique_id = str(uuid4().int)
+    ydl_opts = {"outtmpl": f"{unique_id}.%(ext)s", 'noplaylist': True}
     if media_type == "mp3":
         ydl_opts["format"] = "bestaudio/best"
         ydl_opts["postprocessors"] = [{
@@ -110,7 +112,7 @@ def download_media(update: Update, context: CallbackContext):
     query.edit_message_text(text="Downloading...")
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         ydl.download([url])
-    media_name = os.path.splitext(name)[0] + "." + media_type
+    media_name = unique_id + "." + media_type
 
     # upload the media file
     query = update.callback_query
@@ -121,7 +123,8 @@ def download_media(update: Update, context: CallbackContext):
     with open(media_name, mode='rb') as video_file:
         assert isinstance(update.effective_message, Message)
         update.effective_message.reply_document(document=video_file,
-                                                filename=media_name,
+                                                filename=name + "." +
+                                                media_type,
                                                 caption=name,
                                                 thumb=thumbnail,
                                                 quote=True)
