@@ -100,7 +100,7 @@ def download_media(update: Update, context: CallbackContext):
             'preferredquality': '192'
         }]
     else:
-        ydl_opts["format"] = "best"
+        ydl_opts["format"] = "best[height<=480]"
         ydl_opts['postprocessors'] = [{
             'key': 'FFmpegVideoConvertor',
             'preferedformat': 'mp4'
@@ -113,7 +113,7 @@ def download_media(update: Update, context: CallbackContext):
     # upload the media file
     query = update.callback_query
     query.answer()
-    query.edit_message_text(text="✅ Proses Berhasil, Sedang Upload ke telegram...")
+    query.edit_message_text(text="✅ Proses Berhasil, sedang Upload ke telegram...")
     update.callback_query.answer()
     logger.info("Uploading the file..")
     with open(media_name, mode='rb') as video_file:
