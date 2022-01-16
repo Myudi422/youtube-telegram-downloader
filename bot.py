@@ -109,7 +109,7 @@ def download_media(update: Update, context: CallbackContext):
             'key': 'FFmpegVideoConvertor',
             'preferedformat': 'mp4'
         }]
-    query.edit_message_text(text="Sudang Mendownload....")
+    query.edit_message_text(text="Sedang Mendownload....")
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         ydl.download([url])
     media_name = unique_id + "." + media_type
