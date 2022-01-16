@@ -73,7 +73,19 @@ def catch_url(update: Update, context: CallbackContext):
             update.message.reply_text("Apa yang Anda ingin saya unduh?",
                                       reply_markup=reply_markup)
         else:
-            update.message.reply_text(f"I can't download your request '{url}'")
+            update.message.reply_text(f"Mohon maaf, silahkan masukan link yt dengan benar '{url}'")
+            reply_markup = InlineKeyboardMarkup(
+                [
+                    [
+                        InlineKeyboardButton("🔍 Cari di Database", switch_inline_query_current_chat="")
+                    ],
+                    [
+                        InlineKeyboardButton("📩 Lapor/REQ", url="https://t.me/otakuindonew"),
+                        InlineKeyboardButton("💠 Versi Batch", url="https://t.me/downloadanimebatch/302")
+                    ],
+                ]
+            )
+        )
     except TypeError:
         logger.info("Invalid url requested:")
         update.message.reply_text("Saya tidak dapat mengunduh permintaan Anda")
@@ -105,7 +117,7 @@ def download_media(update: Update, context: CallbackContext):
             'key': 'FFmpegVideoConvertor',
             'preferedformat': 'mp4'
         }]
-    query.edit_message_text(text="Sedang Mendownload....")
+    query.edit_message_text(text="Sedang Mendownload..(jika not respond, silahkan ganti link.")
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         ydl.download([url])
     media_name = unique_id + "." + media_type
