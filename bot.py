@@ -85,7 +85,6 @@ def catch_url(update: Update, context: CallbackContext):
                     ],
                 ]
             )
-        )
     except TypeError:
         logger.info("Invalid url requested:")
         update.message.reply_text("Saya tidak dapat mengunduh permintaan Anda")
