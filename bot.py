@@ -41,7 +41,7 @@ def start(update: Update, context: CallbackContext):
 
 
 def help_text(update: Update, context: CallbackContext):
-    help_text = ''''''
+    help_text = '''TEST'''
     assert isinstance(update.effective_message, Message)
     update.effective_message.reply_text(help_text)
 
@@ -73,18 +73,12 @@ def catch_url(update: Update, context: CallbackContext):
             update.message.reply_text("Apa yang Anda ingin saya unduh?",
                                       reply_markup=reply_markup)
         else:
-            update.message.reply_text(f"Mohon maaf, silahkan masukan link yt dengan benar '{url}'")
-            reply_markup = InlineKeyboardMarkup(
-                [
-                    [
-                        InlineKeyboardButton("🔍 Cari di Database", switch_inline_query_current_chat="")
-                    ],
-                    [
-                        InlineKeyboardButton("📩 Lapor/REQ", url="https://t.me/otakuindonew"),
-                        InlineKeyboardButton("💠 Versi Batch", url="https://t.me/downloadanimebatch/302")
-                    ],
-                ]
-            )
+            keyboard1 = [[
+                InlineKeyboardButton("🔍 Cari di Database", callback_data=f"help_text"),
+                InlineKeyboardButton("📩 Lapor/REQ", url="https://t.me/otakuindonew"),
+            ]]
+            reply_markup = InlineKeyboardMarkup(keyboard1)
+            update.message.reply_text(f"Mohon maaf, url {url} anda ketik salah, silahkan masukan link yt dengan benar, Seperti dibawah ini \n /yt https://www.youtube.com/watch?v=lpiB2wMc49g)
     except TypeError:
         logger.info("Invalid url requested:")
         update.message.reply_text("Saya tidak dapat mengunduh permintaan Anda")
