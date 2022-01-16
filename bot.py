@@ -73,10 +73,6 @@ def catch_url(update: Update, context: CallbackContext):
             update.message.reply_text("Apa yang Anda ingin saya unduh?",
                                       reply_markup=reply_markup)
         else:
-            keyboard1 = [[
-                InlineKeyboardButton("🔍 Cari di Database", callback_data=f"help_text"),
-                InlineKeyboardButton("📩 Lapor/REQ", url="https://t.me/otakuindonew"),
-            ]]
             reply_markup = InlineKeyboardMarkup(keyboard1)
             update.message.reply_text(f"Mohon maaf, url {url} anda ketik salah, silahkan masukan link yt dengan benar, Seperti dibawah ini \n /yt https://www.youtube.com/watch?v=lpiB2wMc49g")
     except TypeError:
@@ -89,7 +85,7 @@ def download_media(update: Update, context: CallbackContext):
     A stage downloading the selected media and converting it to the desired output format.
     """
     query = update.callback_query
-    query.edit_message_text(text="proses...(jika masih begini), silahkan ulang lagi.... atau url kena pembatasan...")
+    query.edit_message_text(text="proses...(jika masih begini), silahkan ulang lagi, atau url kena pembatasan...")
     assert isinstance(context.user_data, dict)
     url = context.user_data["url"]
     logger.info(f"Video URL to download: '{url}'")
@@ -98,19 +94,19 @@ def download_media(update: Update, context: CallbackContext):
     unique_id = str(uuid4().int)
     ydl_opts = {"outtmpl": f"{unique_id}.%(ext)s", 'noplaylist': True}
     if media_type == "mp3":
-        ydl_opts["format"] = "bestaudio/best"
+        ydl_opts["format"] = "bestaudio"
         ydl_opts["postprocessors"] = [{
             'key': 'FFmpegExtractAudio',
             'preferredcodec': 'mp3',
             'preferredquality': '192'
         }]
     else:
-        ydl_opts["format"] = "best"
+        ydl_opts["format"] = "bestvideo"
         ydl_opts['postprocessors'] = [{
             'key': 'FFmpegVideoConvertor',
             'preferedformat': 'mp4'
         }]
-    query.edit_message_text(text="Sedang Mendownload..(jika not respond, silahkan ganti link.")
+    query.edit_message_text(text="❕ Sedang Mendownload..(jika not respond, silahkan ganti link.)")
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         ydl.download([url])
     media_name = unique_id + "." + media_type
@@ -118,7 +114,7 @@ def download_media(update: Update, context: CallbackContext):
     # upload the media file
     query = update.callback_query
     query.answer()
-    query.edit_message_text(text="Proses Berhasil, Sedang Upload ke telegram...")
+    query.edit_message_text(text="✅ Proses Berhasil, Sedang Upload ke telegram...")
     update.callback_query.answer()
     logger.info("Uploading the file..")
     with open(media_name, mode='rb') as video_file:
