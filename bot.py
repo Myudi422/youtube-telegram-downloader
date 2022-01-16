@@ -41,11 +41,7 @@ def start(update: Update, context: CallbackContext):
 
 
 def help_text(update: Update, context: CallbackContext):
-    help_text = '''Just send me a video link like:
-/v <videolink>
-
-e.g:
-/v youtube.com/watch?v=mKxu_dyzrj4'''
+    help_text = ''''''
     assert isinstance(update.effective_message, Message)
     update.effective_message.reply_text(help_text)
 
@@ -125,7 +121,7 @@ def download_media(update: Update, context: CallbackContext):
         update.effective_message.reply_document(document=video_file,
                                                 filename=name + "." +
                                                 media_type,
-                                                caption=name,
+                                                caption=name,\n Didownload Oleh @ccgnimeX_Bot,
                                                 thumb=thumbnail,
                                                 quote=True)
     logger.info("Upload finished.")
