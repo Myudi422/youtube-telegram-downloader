@@ -122,7 +122,6 @@ def download_media(update: Update, context: CallbackContext):
                                                 filename=name + "." +
                                                 media_type,
                                                 caption=name,
-                                                caption=Didownload oleh @ccgnimeX_bot,
                                                 thumb=thumbnail,
                                                 quote=True)
     logger.info("Upload finished.")
