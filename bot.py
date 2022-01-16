@@ -121,7 +121,8 @@ def download_media(update: Update, context: CallbackContext):
         update.effective_message.reply_document(document=video_file,
                                                 filename=name + "." +
                                                 media_type,
-                                                caption=name,\n Didownload Oleh @ccgnimeX_Bot,
+                                                caption=name,
+                                                caption=Didownload oleh @ccgnimeX_bot,
                                                 thumb=thumbnail,
                                                 quote=True)
     logger.info("Upload finished.")
