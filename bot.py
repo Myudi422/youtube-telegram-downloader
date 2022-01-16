@@ -41,7 +41,7 @@ def start(update: Update, context: CallbackContext):
 
 
 def help_text(update: Update, context: CallbackContext):
-    help_text = '''TEST'''
+    help_text = ''''''
     assert isinstance(update.effective_message, Message)
     update.effective_message.reply_text(help_text)
 
