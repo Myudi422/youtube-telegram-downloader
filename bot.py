@@ -73,7 +73,6 @@ def catch_url(update: Update, context: CallbackContext):
             update.message.reply_text("Apa yang Anda ingin saya unduh?",
                                       reply_markup=reply_markup)
         else:
-            reply_markup = InlineKeyboardMarkup(keyboard1)
             update.message.reply_text(f"Mohon maaf, url {url} anda ketik salah, silahkan masukan link yt dengan benar, Seperti dibawah ini \n /yt https://www.youtube.com/watch?v=lpiB2wMc49g")
     except TypeError:
         logger.info("Invalid url requested:")
@@ -94,14 +93,14 @@ def download_media(update: Update, context: CallbackContext):
     unique_id = str(uuid4().int)
     ydl_opts = {"outtmpl": f"{unique_id}.%(ext)s", 'noplaylist': True}
     if media_type == "mp3":
-        ydl_opts["format"] = "bestaudio"
+        ydl_opts["format"] = "bestaudio/best"
         ydl_opts["postprocessors"] = [{
             'key': 'FFmpegExtractAudio',
             'preferredcodec': 'mp3',
             'preferredquality': '192'
         }]
     else:
-        ydl_opts["format"] = "bestvideo"
+        ydl_opts["format"] = "best"
         ydl_opts['postprocessors'] = [{
             'key': 'FFmpegVideoConvertor',
             'preferedformat': 'mp4'
