@@ -78,7 +78,7 @@ def catch_url(update: Update, context: CallbackContext):
                 InlineKeyboardButton("📩 Lapor/REQ", url="https://t.me/otakuindonew"),
             ]]
             reply_markup = InlineKeyboardMarkup(keyboard1)
-            update.message.reply_text(f"Mohon maaf, url {url} anda ketik salah, silahkan masukan link yt dengan benar, Seperti dibawah ini \n /yt https://www.youtube.com/watch?v=lpiB2wMc49g)
+            update.message.reply_text(f"Mohon maaf, url {url} anda ketik salah, silahkan masukan link yt dengan benar, Seperti dibawah ini \n /yt https://www.youtube.com/watch?v=lpiB2wMc49g")
     except TypeError:
         logger.info("Invalid url requested:")
         update.message.reply_text("Saya tidak dapat mengunduh permintaan Anda")
