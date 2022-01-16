@@ -37,7 +37,7 @@ def is_supported(url):
 def start(update: Update, context: CallbackContext):
     assert isinstance(update.effective_message, Message)
     update.effective_message.reply_text(
-        "Hello! Send /help if you don't know how to use me!")
+        "")
 
 
 def help_text(update: Update, context: CallbackContext):
@@ -74,13 +74,13 @@ def catch_url(update: Update, context: CallbackContext):
                 InlineKeyboardButton("Video", callback_data="format_mp4"),
             ]]
             reply_markup = InlineKeyboardMarkup(keyboard)
-            update.message.reply_text("What do you want me to download?",
+            update.message.reply_text("Apa yang Anda ingin saya unduh?",
                                       reply_markup=reply_markup)
         else:
             update.message.reply_text(f"I can't download your request '{url}'")
     except TypeError:
         logger.info("Invalid url requested:")
-        update.message.reply_text("I can't download your request")
+        update.message.reply_text("Saya tidak dapat mengunduh permintaan Anda")
 
 
 def download_media(update: Update, context: CallbackContext):
@@ -88,7 +88,7 @@ def download_media(update: Update, context: CallbackContext):
     A stage downloading the selected media and converting it to the desired output format.
     """
     query = update.callback_query
-    query.edit_message_text(text="Parsing...")
+    query.edit_message_text(text="proses...(jika masih begini), silahkan ulang lagi.... atau url kena pembatasan...")
     assert isinstance(context.user_data, dict)
     url = context.user_data["url"]
     logger.info(f"Video URL to download: '{url}'")
@@ -109,7 +109,7 @@ def download_media(update: Update, context: CallbackContext):
             'key': 'FFmpegVideoConvertor',
             'preferedformat': 'mp4'
         }]
-    query.edit_message_text(text="Downloading...")
+    query.edit_message_text(text="Sudang Mendownload....")
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         ydl.download([url])
     media_name = unique_id + "." + media_type
@@ -117,7 +117,7 @@ def download_media(update: Update, context: CallbackContext):
     # upload the media file
     query = update.callback_query
     query.answer()
-    query.edit_message_text(text="Uploading...")
+    query.edit_message_text(text="Proses Berhasil, Sedang Upload ke telegram...")
     update.callback_query.answer()
     logger.info("Uploading the file..")
     with open(media_name, mode='rb') as video_file:
@@ -142,7 +142,7 @@ def main():
 
     start_handler = CommandHandler("start", start)
     help_handler = CommandHandler("help", help_text)
-    video_handler = CommandHandler("v", catch_url)
+    video_handler = CommandHandler("yt", catch_url)
     download_handler = CallbackQueryHandler(callback=download_media,
                                             pattern="^format_mp[34]$")
 
