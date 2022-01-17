@@ -100,7 +100,7 @@ def download_media(update: Update, context: CallbackContext):
             'preferredquality': '192'
         }]
     else:
-        ydl_opts["format"] = "best[height<=480]"
+        ydl_opts["format"] = "best[height<=720]"
         ydl_opts['postprocessors'] = [{
             'key': 'FFmpegVideoConvertor',
             'preferedformat': 'mp4'
