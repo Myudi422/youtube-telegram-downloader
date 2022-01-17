@@ -1,2 +1,2 @@
 python_telegram_bot==13.7
-yt_dlp
+yt-dlp==2021.12.27
