@@ -12,8 +12,8 @@ logging.basicConfig(
 
 logger = logging.getLogger(__name__)
 
-BOT_TOKEN = os.getenv('BOT_TOKEN' 1920905087:AAGvlh_lBs44Z_s9l7IzNyxtlo040oVKNFY)
-HEROKU = os.getenv('HEROKU' https://103.174.115.181/)
+BOT_TOKEN = os.getenv('BOT_TOKEN')
+HEROKU = os.getenv('HEROKU')
 PORT = os.getenv('PORT', 443)
 
 # error if there is no bot token set
