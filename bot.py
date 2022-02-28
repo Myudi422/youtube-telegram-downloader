@@ -49,7 +49,7 @@ def help_text(update: Update, context: CallbackContext):
 def extractYt(yturl: str) -> tuple[str, str]:
     ydl = yt_dlp.YoutubeDL()
     with ydl:
-        r = ydl.extract_info(yturl, download=False)
+        r = ydl.extract_info(yturl, download=True)
         assert isinstance(r, dict)
         return r['title'], r['thumbnail']
 
@@ -73,7 +73,7 @@ def catch_url(update: Update, context: CallbackContext):
             update.message.reply_text("Apa yang Anda ingin saya unduh?",
                                       reply_markup=reply_markup)
         else:
-            update.message.reply_text(f"Mohon maaf, url {url} anda ketik salah, silahkan masukan link yt dengan benar, Seperti dibawah ini \n /yt https://www.youtube.com/watch?v=lpiB2wMc49g")
+            update.message.reply_text(f"Mohon maaf, url {url} anda ketik salah, silahkan masukan link yt dengan benar, Seperti dibawah ini \n /yt url")
     except TypeError:
         logger.info("Invalid url requested:")
         update.message.reply_text("Saya tidak dapat mengunduh permintaan Anda")
